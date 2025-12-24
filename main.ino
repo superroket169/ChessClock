@@ -4,6 +4,15 @@
 
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 
+enum class SettingType
+{
+    HOUR = 1,
+    MINUTE = 2,
+    SECOND = 3,
+    INCREAMENT = 4,
+    MENU = 5
+};
+
 struct Time
 {
     int8_t hour;
@@ -39,10 +48,19 @@ public:
         return ((totalMillisec - (millis() - beginTime)) / 1000L) % 60L;
     }
 
+    int32_t getTot() const
+    {
+        return totalMillisec;
+    }
+
     void setClock(Time inpTime)
     {
-        totalMillisec = 0;
         totalMillisec = (inpTime.hour * 3600000L) + (inpTime.min * 60000L) + (inpTime.sec * 1000L);
+    }
+
+    void setClockMill(uint32_t tmp)
+    {
+        totalMillisec = tmp;
     }
 
     // başlatır
@@ -65,30 +83,58 @@ public:
 
 };
 
+class Timer
+{
+private:
+    uint32_t beginTime = 0;
+
+public:
+
+    Timer() = default;
+
+    void startTimer()
+    {
+        beginTime = millis();
+    }
+
+    int32_t getElapsedTimeMill()
+    {
+        return (millis() - beginTime);
+    }
+
+    void restartTimer()
+    {
+        beginTime = millis();
+    }
+
+};
+
 char zaman[9]; // "HH:MM:SS"
 
 const int buttonPins[5] = {4, 5, 6, 7, 8};
 /*
     4 -> ayar değiştirme ve menüden çıkıp başlatma butonu. start button
-    6 -> menüde saat/dakika/saniye ayarlamak için (+)
-    7 -> menüde saat/dakika/saniye ayarlamak için (-)
-    8 -> rakip kişiye geçme butonu 
-    9 -> rakip kişiye geçme butonu
+    5 -> menüde saat/dakika/saniye ayarlamak için (+)
+    6 -> menüde saat/dakika/saniye ayarlamak için (-)
+    7 -> rakip kişiye geçme butonu 
+    8 -> rakip kişiye geçme butonu
 */
 
 
 const size_t numButtons = sizeof(buttonPins) / sizeof(buttonPins[0]);
 
-int inMenu = 1; // 0-1
+bool inMenu = true; // 0-1
+SettingType currSetType = SettingType::HOUR; 
+Timer timer;
+int8_t increaseAmount = 1;
 
 SideClock whiteSide;
 SideClock blackSide;
 
+Time inputTime = {0, 0, 0};
+
 void setup()
 {
-    whiteSide.setClock((Time){0, 1, 5});
-    whiteSide.startClock();
-
     lcd.init();
     lcd.backlight();
 
@@ -102,9 +148,20 @@ void loop()
     lcd.setCursor(0, 0);
     lcd.print(zaman);
 
-    if(buttonPins[0] == LOW) inMenu = 0;
-    
-    if(inMenu) return;
+    if(inMenu)
+    {
+        if(buttonPins[1]) whiteSide.setClockMill(whiteSide.getTot() + increaseAmount);
 
+        if(buttonPins[2]) whiteSide.setClockMill(whiteSide.getTot() - increaseAmount);
+
+        if(buttonPins[0] == LOW && timer.getElapsedTimeMill() > 200)
+        {
+            if((int)currSetType <= 4) currSetType = (SettingType) (((int)currSetType) + 1);
+            else inMenu = false;
+            timer.restartTimer();
+        }
+
+        return;
+    }
     lcd.clear();
 }
