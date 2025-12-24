@@ -9,13 +9,13 @@ int san  = 5;
 
 char zaman[9]; // "HH:MM:SS"
 
-const int buttonPins[5] = {4, 6, 7, 8, 9};
+const int buttonPins[5] = {4, 5, 6, 7, 8};
 /*
-    0 -> menüden çıkıp başlatma butonu. start button
-    1 -> menüde dakika/saniye ayarlamak için (+)
-    2 -> menüde dakika/saniye ayarlamak için (-)
-    3 -> rakip kişiye geçme butonu 
-    4 -> rakip kişiye geçme butonu
+    4 -> menüden çıkıp başlatma butonu. start button
+    6 -> menüde dakika/saniye ayarlamak için (+)
+    7 -> menüde dakika/saniye ayarlamak için (-)
+    8 -> rakip kişiye geçme butonu 
+    9 -> rakip kişiye geçme butonu
 */
 
 
