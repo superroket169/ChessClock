@@ -123,15 +123,17 @@ void loop()
     int h2 = blackSide.getHour();
     int m2 = blackSide.getMin();
     int s2 = blackSide.getSec();
-    
+
     lcd.setCursor(0, 0);
-    // (int) ekleyerek sprintf hatasını önlüyoruz
-    sprintf(zaman, "W %02d:%02d:%02d   ", (int)h1, (int)m1, (int)s1);
+    
+    sprintf(zaman, "W %02d:%02d:%02d %02d", (int)h1, (int)m1, (int)s1, (int)curSetTimer);
     lcd.print(zaman);
 
-    // ALT SATIR: Siyah (B)
+
     lcd.setCursor(0, 1);
     sprintf(zaman, "B %02d:%02d:%02d   ", (int)h2, (int)m2, (int)s2);
+
+
     lcd.print(zaman);
 
     if(inMenu)
@@ -154,19 +156,19 @@ void loop()
         {
             increaseAmount = 1000;
             lcd.setCursor(0,1);
-            lcd.print("second   ");
+            //lcd.print("second   ");
         }
         else if(curSetTimer == SettingType::MINUTE)
         {
             increaseAmount = 60000;
             lcd.setCursor(0,1);
-            lcd.print("minute   ");
+            //lcd.print("minute   ");
         }
         else if(curSetTimer == SettingType::HOUR)
         {
             increaseAmount = 3600000;
             lcd.setCursor(0,1);
-            lcd.print("hour     ");
+            //lcd.print("hour     ");
         }
 
         if(digitalRead(buttonPins[2]) == LOW && timer.getElapsedTimeMill() > 150)
@@ -177,6 +179,7 @@ void loop()
                 {
                     inMenu = false;
                     whiteSide.startClock();
+                    blackSide.startClock();
                     lcd.clear();
                     lcd.setCursor(0,1);
                     lcd.print("Game Started");
@@ -205,6 +208,8 @@ void loop()
             blackSide.setClockMill(lastBlackTime);
             lastWhiteTime = whiteSide.getTot();
             timer.restartTimer();
+
+            blackSide.startClock();
             moveSide == 'b';
         }
     }
@@ -215,6 +220,8 @@ void loop()
             whiteSide.setClockMill(lastWhiteTime);
             lastBlackTime = blackSide.getTot();
             timer.restartTimer();
+
+            whiteSide.startClock();
             moveSide == 'w';
         }
     }
