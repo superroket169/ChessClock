@@ -1,17 +1,17 @@
 // main.ino
-#include <Wire.h>
-#include <LiquidCrystal_I2C.h>
+#include <Adafruit_LiquidCrystal.h>
 
-LiquidCrystal_I2C lcd(0x27, 16, 2);
+Adafruit_LiquidCrystal lcd(0);
 
-enum class SettingType
-{
-    HOUR = 1,
-    MINUTE = 2,
-    SECOND = 3,
-    INCREAMENT = 4,
-    MENU = 5
-};
+// buttonPins[0] -> Pin 6 (-)
+// buttonPins[1] -> Pin 5 (+)
+// buttonPins[2] -> Pin 4 (Start/Menu)
+// buttonPins[3] -> taraf değişimi
+// buttonPins[4] -> taraf değişimi
+const int buttonPins[] = {6, 5, 4, 3, 2}; 
+const size_t numButtons = sizeof(buttonPins) / sizeof(buttonPins[0]);
+
+enum class SettingType { HOUR = 3, MINUTE = 2, SECOND = 1, DONE = 4};
 
 struct Time
 {
@@ -19,149 +19,203 @@ struct Time
     int8_t min;
     int8_t sec;
 };
-// 1 saat = 3600 sn
-// 1 dk = 60 sn
 
 class SideClock
 {
 private:
-
     int32_t totalMillisec = 0;
     uint32_t beginTime = 0;
 
 public:
-
-    SideClock() = default;
-
-    int8_t getHour() const
+    void setClockMill(int32_t tmp)
     {
-        return ((totalMillisec - (millis() - beginTime)) / (3600L * 1000L)) % 24L;
-    }
-
-    int8_t getMin() const
-    {
-        return ((totalMillisec - (millis() - beginTime)) / (60L * 1000L)) % 60L;
-    }
-
-    int8_t getSec() const
-    {
-        return ((totalMillisec - (millis() - beginTime)) / 1000L) % 60L;
+        if(tmp < 0) tmp = 0;
+        totalMillisec = tmp;
     }
 
     int32_t getTot() const
     {
+        if (beginTime != 0) return totalMillisec - (millis() - beginTime);
         return totalMillisec;
     }
 
-    void setClock(Time inpTime)
+    int8_t getHour() const
     {
-        totalMillisec = (inpTime.hour * 3600000L) + (inpTime.min * 60000L) + (inpTime.sec * 1000L);
+        int32_t tot = getTot();
+        if(tot < 0) return 0; 
+        return (tot / 3600000L) % 24L;
     }
 
-    void setClockMill(uint32_t tmp)
+    int8_t getMin() const
     {
-        totalMillisec = tmp;
+        int32_t tot = getTot();
+        if(tot < 0) return 0;
+        return (tot / 60000L) % 60L;
     }
 
-    // başlatır
+    int8_t getSec() const
+    {
+        int32_t tot = getTot();
+        if(tot < 0) return 0;
+        return (tot / 1000L) % 60L;
+    }
+
     void startClock()
     {
-        beginTime = millis();
+        if(beginTime == 0) beginTime = millis();
     }
 
-    // saati durdurur ve sıfırlar
     void stopClock()
     {
-        beginTime = 0;
+        if(beginTime != 0)
+        {
+            totalMillisec -= (millis() - beginTime);
+            beginTime = 0;
+        }
     }
-
-    // yeniden başlatır. durdurmaz
-    void restartClock()
-    {
-        beginTime = millis();
-    }
-
 };
 
 class Timer
 {
 private:
     uint32_t beginTime = 0;
-
 public:
-
-    Timer() = default;
-
-    void startTimer()
-    {
-        beginTime = millis();
-    }
-
-    int32_t getElapsedTimeMill()
-    {
-        return (millis() - beginTime);
-    }
-
-    void restartTimer()
-    {
-        beginTime = millis();
-    }
-
+    void startTimer() { beginTime = millis(); }
+    int32_t getElapsedTimeMill() { return (millis() - beginTime); }
+    void restartTimer() { beginTime = millis(); }
 };
 
-char zaman[9]; // "HH:MM:SS"
 
-const int buttonPins[5] = {4, 5, 6, 7, 8};
-/*
-    4 -> ayar değiştirme ve menüden çıkıp başlatma butonu. start button
-    5 -> menüde saat/dakika/saniye ayarlamak için (+)
-    6 -> menüde saat/dakika/saniye ayarlamak için (-)
-    7 -> rakip kişiye geçme butonu 
-    8 -> rakip kişiye geçme butonu
-*/
+char zaman[20]; 
 
-
-const size_t numButtons = sizeof(buttonPins) / sizeof(buttonPins[0]);
-
-bool inMenu = true; // 0-1
-SettingType currSetType = SettingType::HOUR; 
+bool inMenu = true;
 Timer timer;
-int8_t increaseAmount = 1;
+int32_t increaseAmount = 1000;
+SettingType curSetTimer = SettingType::SECOND;
+
+char settingSide = 'w';
+char moveSide = 'w';
+
+uint32_t lastWhiteTime;
+uint32_t lastBlackTime;
 
 SideClock whiteSide;
 SideClock blackSide;
 
-Time inputTime = {0, 0, 0};
-
 void setup()
 {
-    lcd.init();
-    lcd.backlight();
+    lcd.begin(16, 2);
+    lcd.setBacklight(1); 
 
     for(int i = 0; i < numButtons; ++i)
         pinMode(buttonPins[i], INPUT_PULLUP);
+
+    whiteSide.setClockMill(10 * 60000L);
+    blackSide.setClockMill(10 * 60000L);
 }
 
 void loop()
 {
-    sprintf(zaman, "%02d:%02d:%02d", whiteSide.getHour(), whiteSide.getMin(), whiteSide.getSec());
+    int h1 = whiteSide.getHour();
+    int m1 = whiteSide.getMin();
+    int s1 = whiteSide.getSec();
+
+    int h2 = blackSide.getHour();
+    int m2 = blackSide.getMin();
+    int s2 = blackSide.getSec();
+    
     lcd.setCursor(0, 0);
+    // (int) ekleyerek sprintf hatasını önlüyoruz
+    sprintf(zaman, "W %02d:%02d:%02d   ", (int)h1, (int)m1, (int)s1);
+    lcd.print(zaman);
+
+    // ALT SATIR: Siyah (B)
+    lcd.setCursor(0, 1);
+    sprintf(zaman, "B %02d:%02d:%02d   ", (int)h2, (int)m2, (int)s2);
     lcd.print(zaman);
 
     if(inMenu)
     {
-        if(buttonPins[1]) whiteSide.setClockMill(whiteSide.getTot() + increaseAmount);
-
-        if(buttonPins[2]) whiteSide.setClockMill(whiteSide.getTot() - increaseAmount);
-
-        if(buttonPins[0] == LOW && timer.getElapsedTimeMill() > 200)
+        if(digitalRead(buttonPins[1]) == LOW && timer.getElapsedTimeMill() > 100)
         {
-            if((int)currSetType <= 4) currSetType = (SettingType) (((int)currSetType) + 1);
-            else inMenu = false;
+            if(settingSide == 'w') whiteSide.setClockMill(whiteSide.getTot() + increaseAmount);
+            if(settingSide == 'b') blackSide.setClockMill(blackSide.getTot() + increaseAmount);
             timer.restartTimer();
         }
 
+        if(digitalRead(buttonPins[0]) == LOW && timer.getElapsedTimeMill() > 100)
+        {
+            if(settingSide == 'w') whiteSide.setClockMill(whiteSide.getTot() - increaseAmount);
+            if(settingSide == 'b') blackSide.setClockMill(blackSide.getTot() - increaseAmount);
+            timer.restartTimer();
+        }
+        
+        if(curSetTimer == SettingType::SECOND)
+        {
+            increaseAmount = 1000;
+            lcd.setCursor(0,1);
+            lcd.print("second   ");
+        }
+        else if(curSetTimer == SettingType::MINUTE)
+        {
+            increaseAmount = 60000;
+            lcd.setCursor(0,1);
+            lcd.print("minute   ");
+        }
+        else if(curSetTimer == SettingType::HOUR)
+        {
+            increaseAmount = 3600000;
+            lcd.setCursor(0,1);
+            lcd.print("hour     ");
+        }
+
+        if(digitalRead(buttonPins[2]) == LOW && timer.getElapsedTimeMill() > 150)
+        {
+            if(curSetTimer == SettingType::DONE)
+            {
+                if(settingSide == 'b')
+                {
+                    inMenu = false;
+                    whiteSide.startClock();
+                    lcd.clear();
+                    lcd.setCursor(0,1);
+                    lcd.print("Game Started");
+
+                    //
+
+                    lastWhiteTime = whiteSide.getTot();
+                    lastBlackTime = blackSide.getTot();
+                }
+                if(settingSide == 'w')
+                {
+                    settingSide = 'b';
+                    curSetTimer = SettingType::SECOND;
+                }
+            }
+            else curSetTimer = (SettingType)(((int)curSetTimer) + 1);
+            
+        }
         return;
     }
-    lcd.clear();
+
+    if(moveSide == 'w')
+    {
+        if(digitalRead(buttonPins[3]) == LOW && timer.getElapsedTimeMill() > 100)
+        {
+            blackSide.setClockMill(lastBlackTime);
+            lastWhiteTime = whiteSide.getTot();
+            timer.restartTimer();
+            moveSide == 'b';
+        }
+    }
+    else if(moveSide == 'b')
+    {
+        if(digitalRead(buttonPins[3]) == LOW && timer.getElapsedTimeMill() > 100)
+        {
+            whiteSide.setClockMill(lastWhiteTime);
+            lastBlackTime = blackSide.getTot();
+            timer.restartTimer();
+            moveSide == 'w';
+        }
+    }
 }
