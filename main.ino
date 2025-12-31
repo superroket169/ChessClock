@@ -103,17 +103,20 @@ uint32_t lastBlackTime;
 SideClock whiteSide;
 SideClock blackSide;
 
+constexpr int delayTime = 200;
+
 void setup()
 {
     // lcd.begin(16, 2);
-    lcd.init();
+    Wire.begin();
+    lcd.begin();
     lcd.setBacklight(1); 
 
     for(int i = 0; i < numButtons; ++i)
         pinMode(buttonPins[i], INPUT_PULLUP);
 
-    whiteSide.setClockMill(10 * 60000L);
-    blackSide.setClockMill(10 * 60000L);
+    whiteSide.setClockMill(0L);
+    blackSide.setClockMill(0L);
 }
 
 void loop()
@@ -140,14 +143,14 @@ void loop()
 
     if(inMenu)
     {
-        if(digitalRead(buttonPins[1]) == LOW && timer.getElapsedTimeMill() > 100)
+        if(digitalRead(buttonPins[1]) == LOW && timer.getElapsedTimeMill() > delayTime)
         {
             if(settingSide == 'w') whiteSide.setClockMill(whiteSide.getTot() + increaseAmount);
             if(settingSide == 'b') blackSide.setClockMill(blackSide.getTot() + increaseAmount);
             timer.restartTimer();
         }
 
-        if(digitalRead(buttonPins[0]) == LOW && timer.getElapsedTimeMill() > 100)
+        if(digitalRead(buttonPins[0]) == LOW && timer.getElapsedTimeMill() > delayTime)
         {
             if(settingSide == 'w') whiteSide.setClockMill(whiteSide.getTot() - increaseAmount);
             if(settingSide == 'b') blackSide.setClockMill(blackSide.getTot() - increaseAmount);
@@ -173,7 +176,7 @@ void loop()
             //lcd.print("hour     ");
         }
 
-        if(digitalRead(buttonPins[2]) == LOW && timer.getElapsedTimeMill() > 150)
+        if(digitalRead(buttonPins[2]) == LOW && timer.getElapsedTimeMill() > delayTime)
         {
             if(curSetTimer == SettingType::DONE)
             {
@@ -199,32 +202,35 @@ void loop()
             }
             else curSetTimer = (SettingType)(((int)curSetTimer) + 1);
             
+            timer.restartTimer();
         }
         return;
     }
-
-    if(moveSide == 'w')
+    else
     {
-        if(digitalRead(buttonPins[3]) == LOW && timer.getElapsedTimeMill() > 100)
+        if(moveSide == 'w')
         {
-            blackSide.setClockMill(lastBlackTime);
-            lastWhiteTime = whiteSide.getTot();
-            timer.restartTimer();
+            if(digitalRead(buttonPins[3]) == LOW && timer.getElapsedTimeMill() > delayTime)
+            {
+                blackSide.setClockMill(lastBlackTime);
+                lastWhiteTime = whiteSide.getTot();
+                timer.restartTimer();
 
-            blackSide.startClock();
-            moveSide == 'b';
+                blackSide.startClock();
+                moveSide == 'b';
+            }
         }
-    }
-    else if(moveSide == 'b')
-    {
-        if(digitalRead(buttonPins[3]) == LOW && timer.getElapsedTimeMill() > 100)
+        else if(moveSide == 'b')
         {
-            whiteSide.setClockMill(lastWhiteTime);
-            lastBlackTime = blackSide.getTot();
-            timer.restartTimer();
+            if(digitalRead(buttonPins[3]) == LOW && timer.getElapsedTimeMill() > delayTime)
+            {
+                whiteSide.setClockMill(lastWhiteTime);
+                lastBlackTime = blackSide.getTot();
+                timer.restartTimer();
 
-            whiteSide.startClock();
-            moveSide == 'w';
+                whiteSide.startClock();
+                moveSide == 'w';
+            }
         }
     }
 }
