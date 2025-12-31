@@ -1,7 +1,9 @@
 // main.ino
-#include <Adafruit_LiquidCrystal.h>
+#include <Wire.h> 
+#include <LiquidCrystal_I2C.h>
 
-Adafruit_LiquidCrystal lcd(0);
+
+LiquidCrystal_I2C lcd(0x27, 16, 2);
 
 // buttonPins[0] -> Pin 6 (-)
 // buttonPins[1] -> Pin 5 (+)
@@ -85,7 +87,6 @@ public:
     void restartTimer() { beginTime = millis(); }
 };
 
-
 char zaman[20]; 
 
 bool inMenu = true;
@@ -104,7 +105,8 @@ SideClock blackSide;
 
 void setup()
 {
-    lcd.begin(16, 2);
+    // lcd.begin(16, 2);
+    lcd.init();
     lcd.setBacklight(1); 
 
     for(int i = 0; i < numButtons; ++i)
