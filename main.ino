@@ -2,7 +2,6 @@
 #include <Wire.h> 
 #include <LiquidCrystal_I2C.h>
 
-
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 
 // buttonPins[0] -> Pin 6 (-)
@@ -109,7 +108,8 @@ void setup()
 {
     // lcd.begin(16, 2);
     Wire.begin();
-    lcd.begin();
+    // lcd.begin();
+    lcd.init();
     lcd.setBacklight(1); 
 
     for(int i = 0; i < numButtons; ++i)
@@ -161,19 +161,19 @@ void loop()
         {
             increaseAmount = 1000;
             lcd.setCursor(0,1);
-            //lcd.print("second   ");
+            // lcd.print("second   ");
         }
         else if(curSetTimer == SettingType::MINUTE)
         {
             increaseAmount = 60000;
             lcd.setCursor(0,1);
-            //lcd.print("minute   ");
+            // lcd.print("minute   ");
         }
         else if(curSetTimer == SettingType::HOUR)
         {
             increaseAmount = 3600000;
             lcd.setCursor(0,1);
-            //lcd.print("hour     ");
+            // lcd.print("hour     ");
         }
 
         if(digitalRead(buttonPins[2]) == LOW && timer.getElapsedTimeMill() > delayTime)
@@ -184,12 +184,9 @@ void loop()
                 {
                     inMenu = false;
                     whiteSide.startClock();
-                    blackSide.startClock();
                     lcd.clear();
                     lcd.setCursor(0,1);
                     lcd.print("Game Started");
-
-                    //
 
                     lastWhiteTime = whiteSide.getTot();
                     lastBlackTime = blackSide.getTot();
@@ -212,24 +209,38 @@ void loop()
         {
             if(digitalRead(buttonPins[3]) == LOW && timer.getElapsedTimeMill() > delayTime)
             {
-                blackSide.setClockMill(lastBlackTime);
-                lastWhiteTime = whiteSide.getTot();
-                timer.restartTimer();
-
+                whiteSide.stopClock();
                 blackSide.startClock();
-                moveSide == 'b';
+
+                moveSide = 'b';
+                timer.restartTimer();
             }
         }
         else if(moveSide == 'b')
         {
-            if(digitalRead(buttonPins[3]) == LOW && timer.getElapsedTimeMill() > delayTime)
+            if(digitalRead(buttonPins[4]) == LOW && timer.getElapsedTimeMill() > delayTime)
             {
-                whiteSide.setClockMill(lastWhiteTime);
-                lastBlackTime = blackSide.getTot();
-                timer.restartTimer();
-
+                blackSide.stopClock();
                 whiteSide.startClock();
-                moveSide == 'w';
+
+                moveSide = 'w';
+                timer.restartTimer();
+            }
+        }
+
+        if(!inMenu)
+        {
+            if (whiteSide.getTot() <= 0)
+            {
+                lcd.clear();
+                lcd.print("BLACK WINS!");
+                while(1);
+            }
+            if (blackSide.getTot() <= 0)
+            {
+                lcd.clear();
+                lcd.print("WHITE WINS!");
+                while(1);
             }
         }
     }
